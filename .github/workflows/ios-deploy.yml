@@ -81,4 +81,8 @@ jobs:
             -f build/App.ipa \
             -t ios \
             --apiKey "$ASC_KEY_ID" \
-            --apiIssuer "$ASC_ISSUER_ID"
+            --apiIssuer "$ASC_ISSUER_ID" 2>&1 | tee upload.log
+          if grep -qE "ERROR:|UPLOAD FAILED" upload.log; then
+            echo "App Store yukleme basarisiz"
+            exit 1
+          fi
