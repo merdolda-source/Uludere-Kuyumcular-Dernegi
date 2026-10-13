@@ -1,0 +1,14 @@
+{
+  "appId": "uludere.kuyumcu.dernegi",
+  "appName": "ULUDERE KUYUMCULAR DERNEĞİ",
+  "webDir": "www",
+  "server": {
+    "url": "https://uluderekuyumculardernegi.org/mobil/",
+    "cleartext": false
+  },
+  "ios": {
+    "backgroundColor": "#000000",
+    "statusBarStyle": "dark",
+    "scrollEnabled": false
+  }
+}

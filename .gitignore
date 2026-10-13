@@ -1,0 +1,10 @@
+node_modules/
+.DS_Store
+*.log
+*.key
+*.p12
+*.pem
+*.cer
+*.csr
+*.mobileprovision
+build/

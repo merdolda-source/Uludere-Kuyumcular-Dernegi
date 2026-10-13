@@ -1,0 +1,84 @@
+name: iOS App Store Deploy
+on:
+  push:
+    branches: [master]
+jobs:
+  build-and-deploy:
+    runs-on: macos-15
+    steps:
+      - name: Kodu cek
+        uses: actions/checkout@v4
+      - name: Xcode sec
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: 'latest-stable'
+      - name: Node.js kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Bagımlılıkları yukle
+        run: npm ci
+      - name: www hazırla
+        run: |
+          mkdir -p www
+          echo "<html><body></body></html>" > www/index.html
+      - name: Capacitor sync
+        run: |
+          chmod -R 777 node_modules/.bin/
+          npx cap sync ios
+      - name: Sertifika kur
+        env:
+          CERT_BASE64: ${{ secrets.CERT_BASE64 }}
+          PRIVATE_KEY_BASE64: ${{ secrets.PRIVATE_KEY_BASE64 }}
+          PROVISION_BASE64: ${{ secrets.PROVISION_BASE64 }}
+        run: |
+          echo "$CERT_BASE64" | base64 --decode > cert.cer
+          echo "$PRIVATE_KEY_BASE64" | base64 --decode > private.key
+          echo "$PROVISION_BASE64" | base64 --decode > profile.mobileprovision
+          openssl pkcs12 -export \
+            -out cert.p12 \
+            -inkey private.key \
+            -in <(openssl x509 -inform DER -in cert.cer) \
+            -passout pass:1234
+          security create-keychain -p "temp" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "temp" build.keychain
+          security import cert.p12 -k build.keychain -P "1234" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "temp" build.keychain
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp profile.mobileprovision "$HOME/Library/MobileDevice/Provisioning Profiles/"
+      - name: Archive olustur
+        run: |
+          xcodebuild archive \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -archivePath $PWD/build/App.xcarchive \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="UludereKuyumcular_AppStore" \
+            DEVELOPMENT_TEAM="UB78JBS87Q"
+      - name: IPA olustur
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath $PWD/build/App.xcarchive \
+            -exportOptionsPlist ExportOptions.plist \
+            -exportPath $PWD/build
+      - name: IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: App.ipa
+          path: build/App.ipa
+      - name: App Store yukle
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$ASC_PRIVATE_KEY" > ~/.appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8
+          xcrun altool --upload-app \
+            -f build/App.ipa \
+            -t ios \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID"
