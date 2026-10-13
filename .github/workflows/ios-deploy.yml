@@ -76,7 +76,12 @@ jobs:
           ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
         run: |
           mkdir -p ~/.appstoreconnect/private_keys
-          echo "$ASC_PRIVATE_KEY" > ~/.appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8
+          KEY_FILE=~/.appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8
+          printf '%s\n' "$ASC_PRIVATE_KEY" | tr -d '\r' > "$KEY_FILE"
+          echo "Anahtar satir sayisi: $(wc -l < "$KEY_FILE")"
+          echo "Ilk satir: $(head -1 "$KEY_FILE")"
+          echo "Son satir: $(tail -1 "$KEY_FILE")"
+          echo "Key ID uzunlugu: ${#ASC_KEY_ID}  Issuer uzunlugu: ${#ASC_ISSUER_ID}"
           xcrun altool --upload-app \
             -f build/App.ipa \
             -t ios \
